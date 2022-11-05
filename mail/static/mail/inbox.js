@@ -24,7 +24,7 @@ function compose_email() {
     document.querySelector('#compose-body').value = '';
 }
 
-async function load_mailbox(mailbox, err=false) {
+async function load_mailbox(mailbox, message="") {
 
     // Show the mailbox and hide other views
     document.querySelector('#emails-view').style.display = 'block';
@@ -34,6 +34,11 @@ async function load_mailbox(mailbox, err=false) {
     const folder_title = document.querySelector('#folder_title');
     const folder_content = document.querySelector('#folder_content');
     
+    // Display message
+    if (message != '') {
+        document.querySelector('#display_message').textContent = message;
+    }
+
     // Set folder title and clear content
     folder_title.innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
     folder_content.innerHTML = '';
@@ -96,11 +101,9 @@ async function send_email() {
     let data = await response.json();
     // if message sent successfully, display resulting status msg
     if (response.status >= 200 && response.status <=299) {    
-        document.querySelector('#mymessages').textContent = data.message;
-        // now clear out fields
-        document.querySelector('#compose-recipients').value = '';
-        document.querySelector('#compose-subject').value = '';
-        document.querySelector('#compose-body').value = '';
+        // now go to sent mailbox
+        load_mailbox('sent', data.message)
+        document.querySelector('#sent').click();
     } else {
         document.querySelector('#mymessages').textContent = data.error;
     }
