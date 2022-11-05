@@ -2,6 +2,21 @@ textarea {
     min-height: 400px;
 }
 
-a, button {
+/* a, button {
+    margin: 5px;
+} */
+
+tr {
+    border: 2px solid black;
+    background-color: lightgray;    
+}
+
+[data-unread='true'] {
+    background-color: white;
+}
+
+#line {
     margin-top: 1em;
+    margin-bottom: 1em;
+    border-bottom: 2px solid black;
 }

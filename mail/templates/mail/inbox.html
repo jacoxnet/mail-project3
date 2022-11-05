@@ -11,8 +11,15 @@
     <a class="btn btn-sm btn-outline-primary" href="{% url 'logout' %}">Log Out</a>
     <hr>
 
+    <div id="oneemail-view">
+        <div id="oneemail_header"></div>
+        <button class="btn btn-sm btn-outline-primary" id="reply">Reply</button>
+        <button class="btn btn-sm btn-outline-primary" id="archive">Archive</button>
+        <hr>
+        <div id="oneemail_body"></div>
+    </div>
+    
     <div id="emails-view">
-        <p><em id='display_message'></em></p>
         <h3 id="folder_title"></h3>
         <div id="folder_content"></div>
     </div>
