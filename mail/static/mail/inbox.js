@@ -4,27 +4,45 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('#inbox').addEventListener('click', () => load_mailbox('inbox'));
     document.querySelector('#sent').addEventListener('click', () => load_mailbox('sent'));
     document.querySelector('#archived').addEventListener('click', () => load_mailbox('archive'));
-    document.querySelector('#compose').addEventListener('click', compose_email);
-    document.querySelector('#send_email').addEventListener('click', send_email)
+    document.querySelector('#compose').addEventListener('click', () => compose_email());
+    document.querySelector('#send_email').addEventListener('click', () => send_email())
 
   // By default, load the inbox
   load_mailbox('inbox');
 });
 
-function compose_email() {
-
+//
+// compose - set up and clear fields for email input
+//      sent button calls sendemail
+//      optional arguments used to pass in old email for reply
+//
+async function compose_email(oldemailid=null) {
+    console.log(`entering compose email with oldemailid = ${oldemailid}`);
     // Show compose view and hide other views
     document.querySelector('#oneemail-view').style.display = 'none';
     document.querySelector('#emails-view').style.display = 'none';
     document.querySelector('#compose-view').style.display = 'block';
-
-    // Clear out composition fields
-    document.querySelector('#mymessages').textContent = '';
-    document.querySelector('#compose-recipients').value = '';
-    document.querySelector('#compose-subject').value = '';
-    document.querySelector('#compose-body').value = '';
+    // if we're replying, load old email
+    if (oldemailid) {
+        let response = await fetch('/emails/' + oldemailid);
+        let data = await response.json();
+        document.querySelector('#mymessages').textContent = 'Replying';
+        document.querySelector('#compose-recipients').value = data.sender;
+        const newsubject = (data.subject.slice(0,4) == 'Re: ')? data.subject : 'Re: ' + data.subject;
+        document.querySelector('#compose-subject').value = newsubject;
+        document.querySelector('#compose-body').value = `\n\nOn ${data.timestamp}, ${data.sender} wrote:\n${data.body}\n`;
+    } else {
+        // otherwise, blank out fields
+        document.querySelector('#mymessages').textContent = 'Composing'
+        document.querySelector('#compose-recipients').value = '';
+        document.querySelector('#compose-subject').value = '';
+        document.querySelector('#compose-body').value = '';
+    }
 }
 
+// 
+// load and display a mailbox list
+//
 async function load_mailbox(mailbox) {
 
     // Show the mailbox and hide other views
@@ -88,6 +106,9 @@ async function load_mailbox(mailbox) {
     }
 }
 
+//
+// send email
+//
 async function send_email() {
     /* retrieve info from DOM fields */
     let recipients = document.querySelector('#compose-recipients').value;
@@ -103,19 +124,18 @@ async function send_email() {
         })
     });
     let data = await response.json();
-    // if message sent successfully, display resulting status msg
+    // if message sent successfully, display resulting status msg   
     if (response.status >= 200 && response.status <=299) {    
-        document.querySelector('#mymessages').textContent = data.message;
-        // now clear out fields
-        document.querySelector('#compose-recipients').value = '';
-        document.querySelector('#compose-subject').value = '';
-        document.querySelector('#compose-body').value = '';
+        document.querySelector("#sent").click();  
     } else {
         document.querySelector('#mymessages').textContent = data.error;
     }
 }
 
-// helper function to mark an email read.
+//
+// markread - helper function to mark an email read.
+//      called from gotoemail
+//
 async function markread(emailid) {
     let response = await fetch('/emails/' + emailid, {
         method: 'PUT',
@@ -130,7 +150,10 @@ async function markread(emailid) {
     }
 }
 
-// helper function to archive and unarchive
+//
+// changearchive - helper function to archive and unarchive
+//      called from gotoemail
+//
 async function changearchive(emailid, archivestatus) {
     let response = await fetch('/emails/' + emailid, {
         method: 'PUT',
@@ -141,44 +164,49 @@ async function changearchive(emailid, archivestatus) {
     document.querySelector("#inbox").click();    
 }
     
-
-
+//
+// gotoemail - display the full content of an email
+//      called when click on email in mailbox list
+//      has reply button and (if not sent mailbox) archive
+//      button
+//  
+//      arguments: mailbox name, email id number
+//      (we need mailbox name because behavior differs
+//      for archive button)
+//
 async function gotoemail(mailbox, emailid) {
-    console.log(`goto email mailbox ${mailbox} emailid ${emailid}`)
     // hide others and activate this view 
     document.querySelector('#oneemail-view').style.display = 'block';
     document.querySelector('#emails-view').style.display = 'none';
     document.querySelector('#compose-view').style.display = 'none';
-
-    const archivebutton = document.querySelector('#archive')
-
+    const archivebutton = document.querySelector('#archive');
+    const replybutton = document.querySelector('#reply');
+    // set up reply button functionality
+    replybutton.setAttribute('onclick', `compose_email(${emailid})`);
     // show archive button if in inbox folder and set click function
     if (mailbox == 'inbox') {
         archivebutton.innerHTML = 'Archive';
         archivebutton.removeAttribute('hidden');
         archivebutton.setAttribute('onclick', `changearchive(${emailid}, true)`);
     }
-
     // hide archive button if in "sent" folder
     if (mailbox == 'sent') {
         archivebutton.setAttribute('hidden', true);
         console.log('hiding archive button');
     }
-
     // change archive to unarchive if in archive folder
     if (mailbox == 'archive') {
         archivebutton.innerHTML = 'Unarchive';
         archivebutton.removeAttribute('hidden');
         archivebutton.setAttribute('onclick', `changearchive(${emailid}, false)`);
     }
-
     // locate email folder_content in DOM
     const oneemail_header = document.querySelector('#oneemail_header');
     const oneemail_body = document.querySelector('#oneemail_body');
     // clear out
     oneemail_header.innerHTML = '';
     oneemail_body.innerHTML = '';
-    // fetch emailid
+    // fetch email from id
     let response = await fetch('/emails/' + emailid);
     let data = await response.json();
     if (response.status >= 200 && response.status <=299) {
@@ -187,13 +215,7 @@ async function gotoemail(mailbox, emailid) {
                                 '<br><b>Subject: </b>' + data.subject + '<br><b>Timestamp: </b>' + data.timestamp;
         oneemail_body.innerHTML = data.body;
         // mark item read - indicate error if necessary
-        if (markread(emailid)) {
-            return;
-        }
-        else {
-            console.log('error marking read');
-            oneemail_body.innerHTML = "Error marking item read";    
-        }
+        markread(emailid);
     } else {
         oneemail_body.innerHTML = data.error;
     }
